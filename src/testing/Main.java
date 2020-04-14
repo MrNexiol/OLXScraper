@@ -12,7 +12,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -32,19 +35,25 @@ public class Main extends Application {
     ListView<CustomVBox> listView;
     Button searchButton = new Button("Search");
 
-    private class CustomVBox extends VBox {
+    private class CustomVBox extends HBox {
+        VBox textVBox = new VBox();
         Text titleLabel = new Text();
         Label priceLabel = new Label();
-
-        public CustomVBox(String title, String price){
+        ImageView imageView = new ImageView();
+        Image image;
+        public CustomVBox(String title, String price, String imageURL){
             super();
 
             this.titleLabel.setText(title);
             this.priceLabel.setText(price);
+            this.image = new Image(imageURL,50,50,false,false);
+            this.imageView.setImage(this.image);
 
             this.titleLabel.setFont(Font.font("Verdana", FontWeight.BOLD,12));
 
-            this.getChildren().addAll(titleLabel,priceLabel);
+            this.setSpacing(8);
+            this.textVBox.getChildren().addAll(titleLabel,priceLabel);
+            this.getChildren().addAll(imageView, textVBox);
         }
     }
 
@@ -59,11 +68,18 @@ public class Main extends Application {
         VBox leftPane = new VBox();
         Label searchLabel = new Label("Search");
         TextField searchInput = new TextField();
-        leftPane.getChildren().addAll(searchLabel,searchInput,searchButton);
+        Label maxValueLabel = new Label("Max Value");
+        TextField maxValueInput = new TextField();
+        leftPane.getChildren().addAll(searchLabel,searchInput,maxValueLabel, maxValueInput, searchButton);
 
         searchButton.setOnAction(actionEvent -> {
             list = new LinkedList<>();
             String searchQuery = searchInput.getText();
+            String searchMaxValue = "";
+
+            if(!maxValueInput.getText().equals("")){
+                searchMaxValue = "filter_float_price%3Ato%5D=" + maxValueInput.getText() + "&search%5B";
+            }
 
             WebClient client = new WebClient();
             client.getOptions().setCssEnabled(false);
@@ -71,7 +87,9 @@ public class Main extends Application {
             try {
                 String searchUrl = "https://www.olx.pl/gorzow/q-" +
                         URLEncoder.encode(searchQuery, StandardCharsets.UTF_8) +
-                        "/?search%5Border%5D=filter_float_price%3Aasc&search%5Bdist%5D=50";
+                        "/?search%5Border%5D=filter_float_price%3Aasc&search%5B" +
+                        searchMaxValue +
+                        "dist%5D=50";
                 HtmlPage website = client.getPage(searchUrl);
                 String pageCount = website.getFirstByXPath("string(//div[@class='pager rel clr']/span[@class='item fleft'][last()]/a/span)");
 
@@ -89,7 +107,8 @@ public class Main extends Application {
                     for (HtmlElement element : articles){
                         String title = element.getFirstByXPath("string(descendant::img/@alt)");
                         String price = element.getFirstByXPath("string(descendant::p[@class='price']/strong)");
-                        CustomVBox item = new CustomVBox(title,price);
+                        String imageURL = element.getFirstByXPath("string(descendant::img/@src)");
+                        CustomVBox item = new CustomVBox(title,price,imageURL);
                         list.add(item);
                     }
                 }
